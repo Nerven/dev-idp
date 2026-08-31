@@ -63,3 +63,13 @@ pnpm install
 pnpm prep
 pnpm test
 ```
+
+## License
+
+dev-idp is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE) for the full text.
+
+Note that section 13 applies here: if you run a modified version as a network
+service, you must offer its source to the users interacting with it.
