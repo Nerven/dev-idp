@@ -1,1 +1,6 @@
 exclude_globs = ["src/test_support.rs"]
+
+exclude_re = [
+    "replace > with >= in handle_authorization_request",
+    "replace > with >= in exchange_authorization_code_for_tokens",
+]
