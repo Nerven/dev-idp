@@ -557,6 +557,160 @@ async fn end_session_rejects_an_unregistered_redirect_uri() {
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
+/// A `post_logout_redirect_uri` is registered per client. Identifying the caller
+/// must actually narrow the check, otherwise any client's URI is accepted for all.
+#[tokio::test]
+async fn end_session_rejects_a_uri_registered_to_another_client() {
+    let app = dev_idp::build_router(test_state_with_tweaked_config(|c| {
+        c.clients[1].post_logout_redirect_uris = vec!["http://localhost:3000/secure-out".into()];
+    }));
+    let res = send_get_request_on(
+        app,
+        "/end_session?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fsecure-out\
+         &client_id=app",
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "`app` does not register `secure`'s post-logout uri"
+    );
+}
+
+/// Same narrowing, but the client is identified by decoding `id_token_hint` --
+/// which only works if the hint's signature is actually verified.
+#[tokio::test]
+async fn end_session_hint_narrows_the_redirect_uri_check() {
+    let tokens = obtain_tokens_for_alice().await;
+    let id_token = tokens["id_token"].as_str().unwrap();
+    let app = dev_idp::build_router(test_state_with_tweaked_config(|c| {
+        c.clients[1].post_logout_redirect_uris = vec!["http://localhost:3000/secure-out".into()];
+    }));
+    let res = send_get_request_on(
+        app,
+        &format!(
+            "/end_session?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fsecure-out\
+             &id_token_hint={id_token}"
+        ),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "the hint identifies `app`, which does not register this uri"
+    );
+}
+
+#[tokio::test]
+async fn end_session_rejects_an_unknown_client_id() {
+    let res = send_get_request(
+        "/end_session?post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Floggedout\
+         &client_id=nope",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(read_body_as_string(res).await, "unknown client_id");
+}
+
+/// Pruning expired codes must not take live ones with it. Uses a dedicated
+/// router: the shared `test_state()` is a process-wide singleton, so a second
+/// authorization from a parallel test would make this racy rather than decisive.
+#[tokio::test]
+async fn issuing_a_second_code_leaves_the_first_redeemable() {
+    let app = dev_idp::build_router(test_state_with_tweaked_config(|_| {}));
+    let res = send_get_request_on(
+        app.clone(),
+        &format!("/authorize?{AUTH_QS}&login_hint=alice"),
+    )
+    .await;
+    let first = extract_query_param(&extract_location_header(&res), "code").unwrap();
+
+    let res =
+        send_get_request_on(app.clone(), &format!("/authorize?{AUTH_QS}&login_hint=bob")).await;
+    extract_query_param(&extract_location_header(&res), "code").expect("second code issued");
+
+    let res = send_post_form_request_on(
+        app,
+        "/token",
+        &[
+            ("grant_type", "authorization_code"),
+            ("code", &first),
+            ("redirect_uri", "http://localhost:3000/cb"),
+            ("client_id", "app"),
+        ],
+        None,
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "the first code must outlive the second authorization"
+    );
+}
+
+/// `exp` is a whole-second unix timestamp, so the boundary is reachable: a
+/// session expiring exactly now is expired, not still valid.
+#[tokio::test]
+async fn a_session_expiring_this_very_second_is_rejected() {
+    // Align to a second boundary first. Without this the clock usually ticks
+    // between stamping `exp` and the handler reading the time, so `exp == now`
+    // is never actually exercised and the assertion holds either way.
+    let subsec = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .subsec_nanos();
+    tokio::time::sleep(std::time::Duration::from_nanos(
+        1_000_000_000 - u64::from(subsec),
+    ))
+    .await;
+
+    let now = current_unix_time();
+    let kid = &test_state().keys.kid.clone();
+    let res = send_get_request_with_cookie(
+        &format!("/authorize?{AUTH_QS}&prompt=none"),
+        &craft_session_cookie("alice", now, now, kid),
+    )
+    .await;
+    let loc = extract_location_header(&res);
+    assert_eq!(
+        extract_query_param(&loc, "error").as_deref(),
+        Some("login_required"),
+        "session with exp == now must not sign alice in: {loc}"
+    );
+}
+
+/// The session cookie carries its own expiry; nothing server-side tracks it.
+#[tokio::test]
+async fn session_cookie_expires_one_ttl_from_now() {
+    const TTL: u64 = 1234;
+    let app = dev_idp::build_router(test_state_with_tweaked_config(|c| c.session.ttl_secs = TTL));
+    let before = current_unix_time();
+    let res = send_get_request_on(app, &format!("/authorize?{AUTH_QS}&login_hint=alice")).await;
+    let cookie = extract_session_cookie_from_response(&res);
+    let payload = cookie.split_once('=').unwrap().1;
+    let session: Value = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(payload).unwrap()).unwrap();
+    let exp = session["exp"].as_u64().unwrap();
+    assert!(
+        (before + TTL..=current_unix_time() + TTL).contains(&exp),
+        "exp {exp} should be about {} + {TTL}",
+        before
+    );
+}
+
+/// A token request missing a required parameter is `invalid_request`, not just
+/// "some failure": the OAuth error code and status are part of the contract.
+#[tokio::test]
+async fn token_request_without_a_code_is_an_invalid_request() {
+    let res = send_post_form_request(
+        "/token",
+        &[("grant_type", "authorization_code"), ("client_id", "app")],
+        None,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(read_body_as_json(res).await["error"], "invalid_request");
+}
+
 #[tokio::test]
 async fn end_session_without_redirect_uri_renders_a_signed_out_page() {
     let res = send_get_request("/end_session").await;

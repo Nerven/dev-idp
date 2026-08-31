@@ -262,6 +262,15 @@ mod tests {
     }
 
     #[test]
+    fn init_reports_an_unreadable_config_instead_of_starting_empty() {
+        // A directory yields an IO error that is *not* NotFound; treating it as
+        // "no config yet" would silently start with an empty configuration.
+        let dir = tempfile::tempdir().unwrap();
+        let err = initialize_config_file(dir.path()).unwrap_err();
+        assert!(err.contains("cannot read config"), "got: {err}");
+    }
+
+    #[test]
     fn init_creates_missing_file() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("new.toml");
