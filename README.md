@@ -7,6 +7,33 @@ Supports the authorization code flow (with optional PKCE), refresh tokens, clien
 > This is a _mock_ provider, and it does not implement any actual security.
 > dev-idp should never be used to protect anything.
 
+## Install
+
+### Binary (shell)
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Nerven/dev-idp/releases/latest/download/dev-idp-installer.sh | sh
+```
+
+### Binary (PowerShell)
+
+```powershell
+# powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/Nerven/dev-idp/releases/latest/download/dev-idp-installer.ps1 | iex"
+```
+
+### Cargo
+
+```sh
+cargo install dev-idp --locked
+```
+
+### Container image
+
+```sh
+docker run --rm -p 8383:8383 -v "$PWD:/config" ghcr.io/nerven/dev-idp
+```
+
 ## Usage
 
 1. Create a [dev-idp.toml](dev-idp.toml) configuration file.
@@ -14,8 +41,9 @@ Supports the authorization code flow (with optional PKCE), refresh tokens, clien
 2. Run dev-idp with your config:
 
    ```sh
-   # from source with cargo
-   cargo run -- dev-idp.toml
+   dev-idp dev-idp.toml
+   # or via docker
+   docker run --rm -p 8383:8383 -v "${PWD}/dev-idp.toml:/config/dev-idp.toml" ghcr.io/nerven/dev-idp
    ```
 
 3. Point your application at the discovery document:  
