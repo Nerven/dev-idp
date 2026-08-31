@@ -48,6 +48,19 @@ and client authentication via `client_secret_basic`, `client_secret_post`, or `n
 
 The development of this project has been heavily assisted by AI/LLM tools.
 
+## Contributing
+
+Contributions are welcome, but please create an issue first to allow us to align on a path forward.
+AI/LLM assistance is allowed, but only in the hands of a person who takes responsibility for the value it provides.
+
+### Tooling
+
+```sh
+cargo test
+cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+```
+
 ## Demo app
 
 ```sh
