@@ -1,0 +1,52 @@
+generated = { kid = "2SNYLo7oG9A", rsa_private_key_pem = """
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCw4bGR/ZXbhz+b
+c+q3ZaS3E4WJXLlRjWk47h6PGIFzLyrKNj0HhvaTUaLTxQY4xiN5w019c7zXz+Lw
+VJUVqMCMk1lyuOn593YiEHJBvD9I4lDZN4CXyIfNWX4uoxw2Zhzn7isklevjtsDU
+FcGJzBBD9UxKwzRWgJuHdMiIUlvoPVeGz+CoLQwMXBInMstTd31/eMBX/ZSFPToa
+Hg5yImltbUPc7mCnFOwIJK0QDhcrNuMQ8H2RxDMdEa4tx8YQlSmXb0CGGklWxVKw
+1bEmDW740n1NoWCIWG0D/P4YBxas4jevu3xh1eC0R6xIIrE6ffApD4u+t5xFAy+O
+pEgmdyknAgMBAAECggEAbhyyDC4PAlCZ2k45Cd5uwcGXWcGtZAViQZyKzY312By+
+yI8nQu5TxbYGZUq76s/9+akJLlXEc5zoq7Ab9xXMeDaqcm6GyaOxmNcgKafkxZyN
+tAuHM/YUBFP351SHFZ5P1FpB5U6nQGTeeajpiLzOS2ADFG+cv1TkfVjIFYUfzdyI
+ZCbIAJGLvsXzfuYyqX5KmY19D5A/6cIpEhTF5/ba9Zt3QMebEqLzU9KIIUMcLcuM
+R76QnR5wxs8DsrXGQ8fN2znLv35Yiwl8OJPmzYLolxAvjzPFP//7ZeP5ydfrGFUi
++8qraBTxWWdTiVFzQ/GLvFnnZTa06r4vRceK7inDIQKBgQDF9lDiGZqbAqz3Ioy0
+wdF7wqCXnKm+E+iCGvqv9CcWLmyZFjgJk4Wt8aYVK2lm7ab+cftX3UcijFnV/Kid
+QURj1kwtCgqyNi3Lz/LL7vvtDkUSOwuvzpnRloGY1OUAqhd0K1QxRQd7UtEvV1/Z
+w4IkJpDXMTEVDCyxAbyytvtVCQKBgQDkvTcyaoUPyeiea4hZKMPjCtCQDxAfhOhs
+OG2gGNOwCQLrrm+WEvT+xSYOU0khO1FB4bdjZqlgzMHEoPRvMON0c5HlVN4oN67c
+fd5xswxMeuS43yKri0P506pCBiTNqSLQ9u8Cm8s2RGf8wSQ/jiUmZJKV4xaY4gAC
+KJ2JU7HIrwKBgQC2DXYI2J8UGvvSMxXPTcdG15A0ncCEq25R6FnO4uvnPD5m8sYK
+GH8Bno+sPEYsgDXpHg2VmkvG++fKIRc3t0QbxII9kVSQ2752BwE0hs1sDol64I44
+2fkfhBge4vrPB52WGhrNTLw6r8jsjp/5dhEDCex92iFXR+D5z60ndZvhcQKBgQCQ
+FIOtNR2FmXf2OePTzXK+E7TV2Tcds3k3mb+rxZep3bNCQ0k0bdJ2nDZhdaKt1RBV
+AFmkuijcuX0gXwY498F+O8Hdg7y/9nsllf9E/TQ1BIAH1z2ecoWp2uL23anXBb/R
+gomAyiORljsuIXa0tdO+wED5Ouaj/E9nDLBWrSpiLwKBgEEXtK0sNEp1nrLSlYxT
+omZdiOX32tdDm/1e97tWi0Xid/+YPz2VZToqCym1KEmyOHB0axt/F0zTun9zChuK
+eZ01uCxzscSO6OpbI9ewrFYKs3kyn3HoTeRQfoFKf0/Y2QfhlAMavSq+fPgF4Lyd
++wC/OMl5NHkOly2MxxqT0pBX
+-----END PRIVATE KEY-----
+""" }
+
+[server]
+bind = "0.0.0.0:8383"
+issuer = "http://localhost:8383"
+
+[cors]
+allowed_origins = ["http://localhost:3000"]
+
+[[clients]]
+client_id     = "demo-app"
+redirect_uris = ["http://localhost:3000/"]
+post_logout_redirect_uris = ["http://localhost:3000/"]
+audiences     = ["api://demo-api"]
+require_pkce  = true
+
+[[users]]
+username = "alice"
+claims = { email = "alice@example.com", name = "Alice", roles = ["admin"] }
+
+[[users]]
+username = "bob"
+claims = { email = "bob@example.com", name = "Bob", roles = ["user"] }

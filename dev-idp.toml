@@ -1,0 +1,33 @@
+[server]
+bind = "0.0.0.0:8383"
+issuer = "http://localhost:8383"
+
+[cors]
+allowed_origins = ["http://localhost:3000"]
+
+[tokens]
+access_ttl_secs = 300
+id_ttl_secs = 300
+refresh_ttl_secs = 86400
+auth_code_ttl_secs = 60
+
+[session]
+ttl_secs = 28800
+
+[[clients]]
+client_id = "my-app"
+client_secret = "dev-secret"
+redirect_uris = ["http://localhost:3000/callback"]
+post_logout_redirect_uris = ["http://localhost:3000/"]
+audiences = ["api://my-api"]
+require_pkce = false
+allow_client_credentials = false
+client_credentials_claims = {}
+
+[[users]]
+username = "alice"
+claims = { email = "alice@example.com", name = "Alice", roles = ["admin"] }
+
+[[users]]
+username = "bob"
+claims = { email = "bob@example.com", name = "Bob", roles = ["user"] }

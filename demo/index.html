@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dev-idp demo app</title>
+  <style>
+    body {
+      font: 16px sans-serif;
+      max-width: 40rem;
+      margin: 3rem auto;
+      padding: 0 1rem;
+      color: #222;
+    }
+    h1 {
+      font-size: 1.4rem;
+    }
+    input,
+    button {
+      font: inherit;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid #999;
+      border-radius: 6px;
+    }
+    button {
+      background: #f5f5f5;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e5e5e5;
+    }
+    pre {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 0.8rem;
+      overflow-x: auto;
+    }
+    .token {
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 0.8rem;
+    }
+    #status {
+      min-height: 1.4rem;
+    }
+    #status.error {
+      color: #b00020;
+    }
+    .hidden {
+      display: none;
+    }
+    details {
+      margin: 1rem 0;
+    }
+    footer {
+      margin-top: 3rem;
+      font-size: 0.85rem;
+      color: #777;
+    }
+  </style>
+
+  <h1>dev-idp demo app</h1>
+  <div id="status" data-testid="status"></div>
+
+  <section id="signed-out" class="hidden">
+    <p>
+      <input
+        id="username"
+        data-testid="username"
+        placeholder="login_hint (optional)"
+        size="18"
+      />
+      <button id="login" data-testid="login">Sign in</button>
+    </p>
+    <p>
+      Leave the field empty to get the IdP's account picker, or type a username
+      (<code>alice</code>, <code>bob</code>) to skip it via
+      <code>login_hint</code>.
+    </p>
+  </section>
+
+  <section id="signed-in" class="hidden">
+    <h2 id="user" data-testid="user"></h2>
+    <p>Claims from the verified <code>id_token</code>:</p>
+    <pre data-testid="claims" id="claims"></pre>
+    <p>
+      <button id="userinfo" data-testid="userinfo">Call /userinfo</button>
+      <button id="refresh" data-testid="refresh">Refresh tokens</button>
+      <button id="logout" data-testid="logout">Sign out</button>
+    </p>
+    <pre
+      data-testid="userinfo-result"
+      id="userinfo-result"
+      class="hidden"
+    ></pre>
+    <details>
+      <summary>Raw tokens</summary>
+      <h3>access_token</h3>
+      <pre class="token" data-testid="access-token" id="access-token"></pre>
+      <h3>id_token</h3>
+      <pre class="token" id="id-token"></pre>
+      <h3>refresh_token</h3>
+      <pre class="token" id="refresh-token"></pre>
+    </details>
+  </section>
+
+  <footer>
+    Expects dev-idp at <code>http://localhost:8383</code>, started with
+    <code>demo/dev-idp.toml</code>.
+  </footer>
+
+  <script src="/oidc-client-ts.min.js"></script>
+  <script>
+    const IDP = "http://localhost:8383";
+
+    const userManager = new oidc.UserManager({
+      authority: IDP,
+      client_id: "demo-app",
+      redirect_uri: location.origin + "/",
+      post_logout_redirect_uri: location.origin + "/",
+      scope: "openid profile email",
+      filterProtocolClaims: false,
+    });
+
+    const $ = (id) => document.getElementById(id);
+
+    function status(msg, isError = false) {
+      $("status").textContent = msg;
+      $("status").className = isError ? "error" : "";
+    }
+
+    async function login() {
+      const hint = $("username").value.trim();
+      await userManager.signinRedirect(hint ? { login_hint: hint } : {});
+    }
+
+    async function callUserinfo() {
+      const user = await userManager.getUser();
+      const endpoint = await userManager.metadataService.getUserInfoEndpoint();
+      const res = await fetch(endpoint, {
+        headers: { authorization: `Bearer ${user.access_token}` },
+      });
+      const out = $("userinfo-result");
+      out.textContent = JSON.stringify(await res.json(), null, 2);
+      out.classList.remove("hidden");
+      status(
+        res.ok ? "GET /userinfo → 200" : `GET /userinfo → ${res.status}`,
+        !res.ok,
+      );
+    }
+
+    async function refresh() {
+      await userManager.signinSilent();
+      await render();
+      status("tokens refreshed");
+    }
+
+    async function logout() {
+      await userManager.signoutRedirect();
+    }
+
+    async function render() {
+      const user = await userManager.getUser();
+      $("signed-out").classList.toggle("hidden", !!user);
+      $("signed-in").classList.toggle("hidden", !user);
+      if (!user) return;
+      $("user").textContent =
+        `Signed in as ${user.profile.name ?? user.profile.sub}`;
+      $("claims").textContent = JSON.stringify(user.profile, null, 2);
+      $("access-token").textContent = user.access_token;
+      $("id-token").textContent = user.id_token;
+      $("refresh-token").textContent = user.refresh_token ?? "(none)";
+    }
+
+    const guard = (fn) => () =>
+      fn().catch((e) =>
+        status(
+          e instanceof TypeError ? `cannot reach dev-idp at ${IDP}` : e.message,
+          true,
+        ),
+      );
+    $("login").addEventListener("click", guard(login));
+    $("userinfo").addEventListener("click", guard(callUserinfo));
+    $("refresh").addEventListener("click", guard(refresh));
+    $("logout").addEventListener("click", guard(logout));
+
+    (async () => {
+      const q = new URLSearchParams(location.search);
+      if (q.has("code") || q.has("error")) {
+        await userManager
+          .signinRedirectCallback()
+          .catch((e) => status(e.message, true));
+        history.replaceState(null, "", "/");
+      } else if (q.has("state")) {
+        // returning from the IdPs end_session endpoint
+        await userManager
+          .signoutRedirectCallback()
+          .catch((e) => status(e.message, true));
+        history.replaceState(null, "", "/");
+        status("signed out");
+      }
+      await render();
+    })();
+  </script>
+</html>
