@@ -59,6 +59,7 @@ AI/LLM assistance is allowed, but only in the hands of a person who takes respon
 cargo test
 cargo fmt --all
 cargo clippy --all-targets -- -D warnings
+cargo mutants
 ```
 
 ## Demo app

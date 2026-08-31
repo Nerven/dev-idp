@@ -2,3 +2,4 @@
 /demo/node_modules
 /demo/test-results
 /demo/playwright-report
+/mutants.out*/
