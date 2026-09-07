@@ -29,6 +29,18 @@ struct SessionCookie {
     kid: String,
 }
 
+pub async fn serve_index_page() -> Html<&'static str> {
+    Html(concat!(
+        "<!doctype html><title>dev-idp</title>\
+         <style>body{font:16px sans-serif;max-width:24rem;margin:4rem auto}</style>\
+         <h2>dev-idp ",
+        env!("CARGO_PKG_VERSION"),
+        "</h2>\
+         <p>The mock identity provider is up and running.</p>\
+         <p><a href=\"/.well-known/openid-configuration\">Discovery document</a></p>",
+    ))
+}
+
 pub async fn serve_discovery_document(State(state): State<Arc<AppState>>) -> Json<Value> {
     let issuer = &state.cfg.server.issuer;
     let claims: BTreeSet<&str> = std::iter::once("sub")

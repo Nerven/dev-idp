@@ -59,6 +59,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .allow_methods(Any)
         .allow_headers(Any);
     Router::new()
+        .route("/", get(routes::serve_index_page))
         .route(
             "/.well-known/openid-configuration",
             get(routes::serve_discovery_document),
