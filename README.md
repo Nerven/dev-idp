@@ -1,5 +1,9 @@
 # dev-idp
 
+[![crates.io](https://img.shields.io/crates/v/dev-idp.svg)](https://crates.io/crates/dev-idp)
+[![Release](https://github.com/Nerven/dev-idp/actions/workflows/release.yml/badge.svg)](https://github.com/Nerven/dev-idp/actions/workflows/release.yml)
+[![Mutants (full)](https://github.com/Nerven/dev-idp/actions/workflows/mutants-full.yml/badge.svg)](https://github.com/Nerven/dev-idp/actions/workflows/mutants-full.yml)
+
 A minimal OpenID Connect (OIDC) mock provider for local development and automated testing.
 Supports the authorization code flow (with optional PKCE), refresh tokens, client credentials, and sign out.
 
