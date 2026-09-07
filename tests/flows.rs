@@ -102,6 +102,16 @@ async fn send_post_form_request_on(
         .unwrap()
 }
 
+#[tokio::test]
+async fn root_page_shows_the_provider_is_running() {
+    let res = send_get_request("/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let html = read_body_as_string(res).await;
+    assert!(html.contains("up and running"));
+    assert!(html.contains(env!("CARGO_PKG_VERSION")));
+    assert!(html.contains("/.well-known/openid-configuration"));
+}
+
 async fn read_body_as_string(res: Response<Body>) -> String {
     let bytes = res.into_body().collect().await.unwrap().to_bytes();
     String::from_utf8(bytes.to_vec()).unwrap()
