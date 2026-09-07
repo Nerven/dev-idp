@@ -29,16 +29,18 @@ struct SessionCookie {
     kid: String,
 }
 
-pub async fn serve_index_page() -> Html<&'static str> {
-    Html(concat!(
-        "<!doctype html><title>dev-idp</title>\
-         <style>body{font:16px sans-serif;max-width:24rem;margin:4rem auto}</style>\
-         <h2>dev-idp ",
-        env!("CARGO_PKG_VERSION"),
-        "</h2>\
-         <p>The mock identity provider is up and running.</p>\
-         <p><a href=\"/.well-known/openid-configuration\">Discovery document</a></p>",
-    ))
+pub async fn serve_index_page() -> Response {
+    render_page(
+        "dev-idp",
+        "",
+        concat!(
+            "<h2>dev-idp ",
+            env!("CARGO_PKG_VERSION"),
+            "</h2>\
+             <p>The mock identity provider is up and running.</p>\
+             <p><a href=\"/.well-known/openid-configuration\">Discovery document</a></p>",
+        ),
+    )
 }
 
 pub async fn serve_discovery_document(State(state): State<Arc<AppState>>) -> Json<Value> {
@@ -292,12 +294,11 @@ fn build_end_session_response(state: &AppState, query: &HashMap<String, String>)
 }
 
 fn render_signed_out_page() -> Response {
-    Html(
-        "<!doctype html><title>dev-idp</title>\
-         <style>body{font:16px sans-serif;max-width:24rem;margin:4rem auto}</style>\
-         <h2>Signed out</h2><p>The dev-idp session has ended.</p>",
+    render_page(
+        "dev-idp",
+        "",
+        "<h2>Signed out</h2><p>The dev-idp session has ended.</p>",
     )
-    .into_response()
 }
 
 #[allow(clippy::result_large_err)]
@@ -349,16 +350,16 @@ fn render_user_picker_page(state: &AppState, raw_query: &str) -> Response {
             )
         })
         .collect();
-    Html(format!(
-        "<!doctype html><title>dev-idp login</title>\
-         <style>body{{font:16px sans-serif;max-width:24rem;margin:4rem auto}}\
-         .user{{display:block;padding:.7rem 1rem;margin:.5rem 0;border:1px solid #999;\
-         border-radius:6px;text-decoration:none;color:#222}}.user:hover{{background:#eee}}\
-         .cancel{{display:block;margin:1rem 0;text-align:center;color:#666}}</style>\
-         <h2>Sign in as</h2>\n{buttons}\
-         <a class=\"cancel\" href=\"/authorize?{raw_query}&login_hint=%21access_denied\">Cancel</a>"
-    ))
-    .into_response()
+    render_page(
+        "dev-idp login",
+        ".user{display:block;padding:.7rem 1rem;margin:.5rem 0;border:1px solid #999;\
+         border-radius:6px;text-decoration:none;color:#222}.user:hover{background:#eee}\
+         .cancel{display:block;margin:1rem 0;text-align:center;color:#666}",
+        &format!(
+            "<h2>Sign in as</h2>\n{buttons}\
+             <a class=\"cancel\" href=\"/authorize?{raw_query}&login_hint=%21access_denied\">Cancel</a>"
+        ),
+    )
 }
 
 pub async fn handle_token_request(
@@ -657,6 +658,15 @@ fn form_post_response(redirect_uri: &str, params: &[(&str, &str)]) -> Response {
         )),
     )
         .into_response()
+}
+
+fn render_page(title: &str, extra_css: &str, body: &str) -> Response {
+    Html(format!(
+        "<!doctype html><title>{title}</title>\
+         <style>body{{font:16px sans-serif;max-width:24rem;margin:4rem auto}}{extra_css}</style>\
+         {body}"
+    ))
+    .into_response()
 }
 
 fn escape_html_attribute(s: &str) -> String {
