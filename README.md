@@ -22,7 +22,6 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Nerven/dev-idp/releases
 ### Binary (PowerShell)
 
 ```powershell
-# powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/Nerven/dev-idp/releases/latest/download/dev-idp-installer.ps1 | iex"
 ```
 
