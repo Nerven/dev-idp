@@ -12,8 +12,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  gate:
+    name: Check for commits in the last week
+    runs-on: ubuntu-latest
+    outputs:
+      recent: ${{ steps.check.outputs.recent }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - id: check
+        run: echo "recent=$(git log -1 --since='7 days ago' --format=x)" >> "$GITHUB_OUTPUT"
+
   full:
     name: Full sweep (shard ${{ matrix.shard }}/4)
+    needs: gate
+    if: needs.gate.outputs.recent || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
