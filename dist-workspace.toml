@@ -16,7 +16,7 @@ cargo-auditable = true
 # Which actions to run on pull requests
 pr-run-mode = "upload"
 # Publish jobs to run in CI
-publish-jobs = ["./publish-docker"]
+publish-jobs = ["./publish-docker", "./publish-crate"]
 # Whether to enable GitHub Attestations
 github-attestations = true
 # When to generate GitHub Attestations
@@ -32,3 +32,6 @@ contents = "read"
 packages = "write"
 id-token = "write"
 attestations = "write"
+[dist.github-custom-job-permissions.publish-crate]
+contents = "read"
+id-token = "write"
